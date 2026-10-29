@@ -95,6 +95,7 @@ jobs:
           context: .
           file: docker/Dockerfile.api
           push: false
+          load: true
           tags: impayes-api:${{ github.sha }}
           build-args: GIT_COMMIT=${{ github.sha }}
       - name: Scan de vulnérabilités (Trivy)
