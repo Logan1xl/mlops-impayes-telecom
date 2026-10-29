@@ -1,0 +1,75 @@
+# CT (Continuous Training) : monitoring quotidien -> réentraînement si la
+# règle de décision le demande -> quality gate -> ouverture d'une PR de
+# promotion (validation humaine). Jamais de remplacement automatique.
+name: CT
+
+on:
+  schedule:
+    - cron: "0 3 * * *"          # tous les jours à 03:00 UTC (04:00 Douala)
+  workflow_dispatch:
+    inputs:
+      force_retrain:
+        description: "Forcer le réentraînement"
+        type: boolean
+        default: false
+
+env:
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    outputs:
+      decision: ${{ steps.check.outputs.decision }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt dvc && pip install -e .
+      - name: Récupérer référence + journaux de production
+        run: dvc pull data/reference data/production || echo "remote DVC non configuré"
+      - id: check
+        name: Analyse de dérive (PSI / KS / F1 sur labels réels)
+        run: |
+          set +e
+          python -m impayes.monitoring.run batch
+          code=$?
+          if [ "$code" = "3" ] || [ "${{ inputs.force_retrain }}" = "true" ]; then
+            echo "decision=retrain" >> "$GITHUB_OUTPUT"
+          else
+            echo "decision=none" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: reports/monitoring/
+
+  retrain:
+    needs: monitor
+    if: needs.monitor.outputs.decision == 'retrain'
+    runs-on: ubuntu-latest
+    permissions: {contents: write, pull-requests: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      - run: pip install -r requirements.txt dvc && pip install -e .
+      - name: Données fraîches (fenêtre glissante + labels récents)
+        run: dvc pull || python -m impayes.data.download
+      - name: Réentraînement reproductible (dvc repro)
+        run: dvc repro
+      - name: Quality gate (déjà appliquée par evaluate) + rapport
+        run: cat reports/metrics.json | jq '{f1_macro, recall_high, auc_ovr_macro, quality_gate}'
+      - name: Ouvrir une PR de promotion (revue humaine obligatoire)
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ct/retrain-${{ github.run_id }}
+          title: "CT : nouveau modèle candidat (run ${{ github.run_id }})"
+          body: |
+            Réentraînement déclenché par le monitoring (voir artefact drift-report).
+            Le modèle a franchi la quality gate et porte l'alias **staging**.
+            Merger cette PR déclenche le workflow CD (canary 10 % puis 100 %).
+          add-paths: |
+            dvc.lock
+            reports/metrics.json
+            reports/model_comparison.json

@@ -1,0 +1,93 @@
+# CD : déploiement du modèle validé.
+# 1) staging automatique  2) canary 10 % en production APRÈS approbation humaine
+# (environnement GitHub « production » avec reviewers obligatoires)
+# 3) passage à 100 % ou rollback selon les métriques du canary.
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_version:
+        description: "Version du registre MLflow à déployer"
+        required: true
+  push:
+    tags: ["model-v*"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository }}/impayes-api
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    permissions: {contents: read, packages: write}
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: Exporter la version « staging » du registre
+        run: python -m impayes.models.registry export --alias staging
+      - id: meta
+        run: echo "tag=model-$(jq -r .version models/model_metadata.json)-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+
+  deploy-staging:
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Déployer en staging
+        run: ./scripts/deploy.sh staging ${{ env.IMAGE }}:${{ needs.build-push.outputs.tag }}
+      - name: Tests de fumée (smoke tests)
+        run: ./scripts/smoke_test.sh "${{ vars.STAGING_URL }}"
+
+  canary:
+    needs: [build-push, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production          # => approbation humaine obligatoire
+    steps:
+      - uses: actions/checkout@v4
+      - name: Canary 10 % du trafic
+        run: ./scripts/deploy.sh canary ${{ env.IMAGE }}:${{ needs.build-push.outputs.tag }} 10
+      - name: Observation 30 min puis contrôle des critères de rollback
+        run: ./scripts/canary_check.sh "${{ vars.PROMETHEUS_URL }}" 1800
+
+  promote:
+    needs: [build-push, canary]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: 100 % du trafic + alias production dans le registre
+        run: |
+          ./scripts/deploy.sh full ${{ env.IMAGE }}:${{ needs.build-push.outputs.tag }}
+          python -m impayes.models.registry promote \
+            --version "$(jq -r .version models/model_metadata.json)" --to production \
+            --approved-by "${{ github.actor }}" --reason "CD run ${{ github.run_id }}"
+
+  rollback:
+    needs: [build-push, canary]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rollback automatique vers l'image précédente
+        run: ./scripts/deploy.sh rollback

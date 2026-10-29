@@ -1,0 +1,105 @@
+# CI : à chaque push / pull request -> qualité du code, tests, entraînement
+# de contrôle sur échantillon, quality gate, build de l'image Docker.
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: Lint & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Installer les dépendances
+        run: |
+          pip install -r requirements.txt pytest httpx ruff
+          pip install -e .
+      - name: Lint (ruff)
+        run: ruff check src tests pipelines
+      - name: Tests unitaires et d'intégration
+        run: pytest --junitxml=reports/junit.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: junit
+          path: reports/junit.xml
+
+  train-validate:
+    name: Entraînement de contrôle + quality gate
+    needs: lint-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt && pip install -e .
+      # Données : dvc pull si un remote est configuré, sinon téléchargement HF
+      - name: Récupérer les données
+        run: python -m impayes.data.download --allow-synthetic
+      - name: Pipeline (validate -> features -> train -> evaluate)
+        run: make pipeline
+      - name: Publier métriques et figures
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-report
+          path: |
+            reports/metrics.json
+            reports/model_comparison.json
+            reports/data_validation.json
+            reports/figures/
+      - name: Commentaire PR avec les métriques
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const m = require('./reports/metrics.json');
+            const body = `### Résultats du modèle candidat\n| Métrique | Valeur |\n|---|---|\n` +
+              `| F1-macro | ${m.f1_macro.toFixed(4)} |\n| Rappel « high » | ${m.recall_high.toFixed(4)} |\n` +
+              `| AUC OvR | ${m.auc_ovr_macro.toFixed(4)} |\n| Latence p95 | ${m.latency.p95_ms.toFixed(1)} ms |\n` +
+              `| Quality gate | ${m.quality_gate.passed ? '✅ franchie' : '❌ échec'} |`;
+            github.rest.issues.createComment({issue_number: context.issue.number,
+              owner: context.repo.owner, repo: context.repo.repo, body});
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: models/
+
+  build:
+    name: Build image Docker
+    needs: train-validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: models/
+      - uses: docker/setup-buildx-action@v3
+      - name: Build (sans push en CI)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: false
+          tags: impayes-api:${{ github.sha }}
+          build-args: GIT_COMMIT=${{ github.sha }}
+      - name: Scan de vulnérabilités (Trivy)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: impayes-api:${{ github.sha }}
+          severity: CRITICAL,HIGH
+          exit-code: "0"
