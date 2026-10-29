@@ -25,5 +25,9 @@ def style_axes(ax) -> None:
 def use_report_style() -> None:
     """Police et couleurs alignées sur le rapport (Carlito ≈ Calibri)."""
     import matplotlib as mpl
-    mpl.rcParams.update({"font.family": ["Carlito", "DejaVu Sans"], "font.size": 10.5,
+    from matplotlib import font_manager
+
+    installed = {f.name for f in font_manager.fontManager.ttflist}
+    family = ["Carlito"] if "Carlito" in installed else ["DejaVu Sans"]
+    mpl.rcParams.update({"font.family": family, "font.size": 10.5,
                          "axes.titlesize": 12, "axes.labelcolor": "#404040", "text.color": "#222222"})
