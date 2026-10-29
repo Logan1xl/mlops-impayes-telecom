@@ -1,0 +1,8 @@
+[core]
+    remote = localstore
+    autostage = true
+# Remote local par défaut (dossier ../dvc-storage). En équipe, remplacer par
+# un stockage partagé :  dvc remote add -d gdrive gdrive://<ID_DOSSIER>
+#                    ou  dvc remote add -d s3 s3://bucket/impayes
+['remote "localstore"']
+    url = ../dvc-storage

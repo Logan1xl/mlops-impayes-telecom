@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "impayes"
+version = "1.0.0"
+description = "MLOps de bout en bout : prédiction des impayés télécom (default_risk)"
+authors = [
+  { name = "MBONGO BOLLO Jarle Wulfrid" },
+  { name = "DONGMO WOZE Junior" },
+]
+requires-python = ">=3.10"
+readme = "README.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["slow: tests nécessitant un modèle entraîné"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]

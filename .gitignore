@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Données et modèles : versionnés par DVC, pas par Git
+/data/raw/*.parquet
+/data/raw/*.csv
+/data/processed/
+/data/reference/
+/data/production/
+/models/*
+!/models/.gitkeep
+/reports/
+/docs/figures/
+/docs/*.svg
+
+# MLflow local
+/mlruns/
+/mlartifacts/
+mlflow.db
+
+# Divers
+.env
+.DS_Store

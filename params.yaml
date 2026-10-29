@@ -1,0 +1,80 @@
+# =====================================================================
+#  Paramètres du pipeline MLOps — Prédiction des impayés (default_risk)
+#  Ce fichier est suivi par DVC : toute modification relance les étapes
+#  dépendantes (dvc repro).
+# =====================================================================
+
+project:
+  name: impayes-telecom
+  seed: 42
+
+data:
+  hf_repo: electricsheepafrica/africa-synth-telecom-telecom-credit-scoring-data-nigeria
+  hf_file: telecom_credit_scoring_data.parquet
+  raw_path: data/raw/telecom_credit_scoring_data.parquet
+  # Si le téléchargement échoue (pas de réseau), on génère une réplique
+  # synthétique de même schéma pour pouvoir tester toute la chaîne.
+  fallback_sample_rows: 200000
+  target: default_risk
+  classes: [low, medium, high]
+
+features:
+  numeric:
+    - tenure_months
+    - avg_monthly_spend_ngn
+    - recharge_frequency_per_month
+    - payment_consistency_score
+    - late_payment_count
+  categorical:
+    - operator
+    - account_type
+  # Colonnes exclues volontairement (voir docs/data_preprocessing.md)
+  #  - identifiants / données personnelles : customer_id, phone_number
+  #  - constante : assessment_date
+  #  - sorties d'un autre système de scoring (risque de fuite/circularité) :
+  #    credit_score, credit_rating, loan_eligibility, max_loan_amount_ngn
+  dropped: [customer_id, phone_number, assessment_date, credit_score,
+            credit_rating, loan_eligibility, max_loan_amount_ngn]
+  engineered: true
+
+split:
+  test_size: 0.2
+  val_size: 0.1
+
+train:
+  candidates: [logreg, random_forest, hist_gbm]
+  primary_metric: f1_macro
+  class_weight: balanced
+  logreg:
+    C: 1.0
+    max_iter: 1000
+  random_forest:
+    n_estimators: 200
+    max_depth: 14
+    min_samples_leaf: 20
+  hist_gbm:
+    max_iter: 300
+    learning_rate: 0.08
+    max_leaf_nodes: 31
+    l2_regularization: 1.0
+
+# Porte de qualité (quality gate) appliquée en CI et en CT
+validation:
+  min_f1_macro: 0.55
+  min_recall_high: 0.60
+  max_regression_vs_production: 0.01   # perte de F1 tolérée vs prod
+  max_latency_ms_p95: 150
+
+registry:
+  model_name: impayes-default-risk
+  tracking_uri: sqlite:///mlflow.db
+  experiment: impayes-default-risk
+
+monitoring:
+  psi_warning: 0.10
+  psi_critical: 0.25
+  ks_pvalue: 0.01
+  f1_drop_warning: 0.05
+  f1_drop_critical: 0.10
+  latency_p95_ms_critical: 300
+  min_labels_for_concept_check: 500
