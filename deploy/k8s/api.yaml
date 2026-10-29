@@ -1,0 +1,87 @@
+# Déploiement Kubernetes : version stable + version canary derrière un Ingress NGINX.
+# Le label "track" (stable/canary) est ajouté aux métriques via relabeling Prometheus.
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: impayes-api, namespace: impayes, labels: {app: impayes-api, track: stable}}
+spec:
+  replicas: 3
+  selector: {matchLabels: {app: impayes-api, track: stable}}
+  template:
+    metadata:
+      labels: {app: impayes-api, track: stable}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8000"}
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/ORG/REPO/impayes-api:stable
+          ports: [{containerPort: 8000}]
+          resources:
+            requests: {cpu: 250m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          readinessProbe: {httpGet: {path: /health, port: 8000}, periodSeconds: 10}
+          livenessProbe: {httpGet: {path: /health, port: 8000}, periodSeconds: 20}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: impayes-api-canary, namespace: impayes, labels: {app: impayes-api, track: canary}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: impayes-api, track: canary}}
+  template:
+    metadata:
+      labels: {app: impayes-api, track: canary}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8000"}
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/ORG/REPO/impayes-api:canary
+          ports: [{containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /health, port: 8000}, periodSeconds: 10}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: {name: impayes-api, namespace: impayes}
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: impayes-api}
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    - type: Resource
+      resource: {name: cpu, target: {type: Utilization, averageUtilization: 65}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: impayes-api, namespace: impayes}
+spec:
+  selector: {app: impayes-api, track: stable}
+  ports: [{port: 80, targetPort: 8000}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: impayes-api-canary, namespace: impayes}
+spec:
+  selector: {app: impayes-api, track: canary}
+  ports: [{port: 80, targetPort: 8000}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: impayes-api, namespace: impayes}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: scoring.example.local
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: impayes-api, port: {number: 80}}}}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: impayes-api-canary
+  namespace: impayes
+  annotations:
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: scoring.example.local
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: impayes-api-canary, port: {number: 80}}}}]}
