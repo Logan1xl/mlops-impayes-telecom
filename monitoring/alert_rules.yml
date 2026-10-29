@@ -1,0 +1,46 @@
+groups:
+  - name: impayes-api
+    rules:
+      - alert: LatenceP95Elevee
+        expr: histogram_quantile(0.95, sum(rate(impayes_inference_latency_seconds_bucket[5m])) by (le)) > 0.3
+        for: 10m
+        labels: {severity: critical}
+        annotations:
+          summary: "Latence p95 d'inférence > 300 ms depuis 10 min"
+          action: "Vérifier la charge, scaler l'API (réplicas), profiler le modèle"
+
+      - alert: TauxErreursEleve
+        expr: sum(rate(impayes_requests_total{status=~"5.."}[5m])) / sum(rate(impayes_requests_total[5m])) > 0.01
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "Plus de 1 % de réponses 5xx"
+
+      - alert: DeriveProportionHighRisk
+        # La part de prédictions « high » s'écarte fortement de la référence (~22 %)
+        expr: |
+          sum(rate(impayes_predictions_total{default_risk="high"}[1h]))
+            / sum(rate(impayes_predictions_total[1h])) > 0.35
+          or
+          sum(rate(impayes_predictions_total{default_risk="high"}[1h]))
+            / sum(rate(impayes_predictions_total[1h])) < 0.10
+        for: 30m
+        labels: {severity: warning}
+        annotations:
+          summary: "Dérive de la distribution des prédictions (prediction drift)"
+          action: "Lancer le job de monitoring batch (PSI/KS) et analyser"
+
+      - alert: DeriveDepenseMoyenne
+        # Référence d'entraînement : dépense moyenne ~ 25 000 NGN
+        expr: impayes_feature_mean{feature="avg_monthly_spend_ngn"} > 32000
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "Dépense moyenne des requêtes > +28 % vs référence (data drift probable)"
+
+      - alert: APIIndisponible
+        expr: up{job="impayes-api"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "L'API de prédiction ne répond plus"
