@@ -98,7 +98,7 @@ jobs:
           tags: impayes-api:${{ github.sha }}
           build-args: GIT_COMMIT=${{ github.sha }}
       - name: Scan de vulnérabilités (Trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: impayes-api:${{ github.sha }}
           severity: CRITICAL,HIGH
