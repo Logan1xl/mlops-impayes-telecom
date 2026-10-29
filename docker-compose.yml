@@ -1,0 +1,56 @@
+# Pile locale complète : API + MLflow (tracking & registre) + Prometheus + Grafana
+#   docker compose up -d --build
+#   API        http://localhost:8000/docs
+#   MLflow     http://localhost:5000
+#   Prometheus http://localhost:9090
+#   Grafana    http://localhost:3000   (admin / admin)
+services:
+  mlflow:
+    image: python:3.11-slim
+    # Même version de MLflow que le client (requirements.txt) pour éviter les incompatibilités
+    command: >
+      sh -c "pip install --no-cache-dir -q 'mlflow>=2.16' &&
+             mlflow server --host 0.0.0.0 --port 5000
+             --backend-store-uri sqlite:////mlflow/mlflow.db
+             --artifacts-destination /mlflow/artifacts --serve-artifacts"
+    ports: ["5000:5000"]
+    volumes:
+      - mlflow-data:/mlflow
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: impayes-api:latest
+    environment:
+      MODEL_SOURCE: local            # "registry" pour charger models:/impayes-default-risk@production
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-me}
+    ports: ["8000:8000"]
+    volumes:
+      - ./data/production:/app/data/production   # journal des prédictions (monitoring)
+    depends_on: [mlflow]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [api]
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  mlflow-data:

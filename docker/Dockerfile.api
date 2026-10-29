@@ -1,0 +1,34 @@
+# ---------------------------------------------------------------
+# Image de serving : API FastAPI + modèle embarqué (reproductible)
+# Build :  docker build -f docker/Dockerfile.api -t impayes-api:latest .
+# Run   :  docker run -p 8000:8000 impayes-api:latest
+# ---------------------------------------------------------------
+FROM python:3.11-slim AS builder
+WORKDIR /build
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY requirements.txt .
+RUN pip install --prefix=/install -r requirements.txt
+
+FROM python:3.11-slim
+LABEL org.opencontainers.image.title="impayes-api" \
+      org.opencontainers.image.description="Serving du modèle de prédiction des impayés télécom" \
+      org.opencontainers.image.authors="MBONGO BOLLO Jarle Wulfrid, DONGMO WOZE Junior"
+ARG MODEL_VERSION=unknown
+ARG GIT_COMMIT=unknown
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    MODEL_SOURCE=local \
+    MODEL_VERSION=${MODEL_VERSION} GIT_COMMIT=${GIT_COMMIT}
+WORKDIR /app
+COPY --from=builder /install /usr/local
+COPY pyproject.toml params.yaml README.md ./
+COPY src ./src
+RUN pip install --no-deps --no-cache-dir . \
+ && useradd --create-home --uid 10001 appuser \
+ && mkdir -p data/production && chown -R appuser /app
+# Le modèle validé (exporté du registre) est embarqué : l'image est immuable
+COPY --chown=appuser models/model.joblib models/model_metadata.json ./models/
+USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"
+CMD ["uvicorn", "impayes.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
