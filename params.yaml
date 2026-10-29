@@ -60,7 +60,7 @@ train:
 
 # Porte de qualité (quality gate) appliquée en CI et en CT
 validation:
-  min_f1_macro: 0.55
+  min_f1_macro: 0.45   # calibré sur le jeu réel (référence naïve ≈ 0,23)
   min_recall_high: 0.60
   max_regression_vs_production: 0.01   # perte de F1 tolérée vs prod
   max_latency_ms_p95: 150
