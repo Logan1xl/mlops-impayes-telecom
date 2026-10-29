@@ -1,0 +1,69 @@
+# Pipeline reproductible DVC :  dvc repro   (dvc dag pour visualiser)
+# Le fichier brut est suivi à part :  dvc add data/raw/telecom_credit_scoring_data.parquet
+stages:
+  validate:
+    cmd: python -m impayes.data.validate
+    deps:
+      - data/raw/telecom_credit_scoring_data.parquet
+      - src/impayes/data/validate.py
+    outs:
+      - reports/data_validation.json:
+          cache: false
+
+  preprocess:
+    cmd: python -m impayes.features.build_features
+    deps:
+      - data/raw/telecom_credit_scoring_data.parquet
+      - reports/data_validation.json
+      - src/impayes/features/build_features.py
+    params:
+      - features
+      - split
+      - project.seed
+    outs:
+      - data/processed
+      - data/reference/reference.parquet
+      - reports/split_stats.json:
+          cache: false
+
+  train:
+    cmd: python -m impayes.models.train
+    deps:
+      - data/processed/train.parquet
+      - data/processed/val.parquet
+      - src/impayes/models/train.py
+      - src/impayes/features/build_features.py
+    params:
+      - train
+      - project.seed
+    outs:
+      - models/model.joblib
+      - models/model_metadata.json:
+          cache: false
+    metrics:
+      - reports/model_comparison.json:
+          cache: false
+
+  evaluate:
+    cmd: python -m impayes.models.evaluate
+    deps:
+      - data/processed/test.parquet
+      - models/model.joblib
+      - src/impayes/models/evaluate.py
+    params:
+      - validation
+    outs:
+      - reports/metrics.json:
+          cache: false
+    metrics:
+      - reports/metrics_summary.json:
+          cache: false
+    plots:
+      - reports/figures/confusion_matrix.png:
+          cache: false
+      - reports/figures/roc_curves.png:
+          cache: false
+      - reports/figures/feature_importance.png:
+          cache: false
+      - reports/figures/model_comparison.png:
+          cache: false
