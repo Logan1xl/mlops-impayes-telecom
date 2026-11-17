@@ -1,0 +1,5 @@
+outs:
+- md5: 517425048d17a19e74ea7d8eb3492de7
+  size: 16791883
+  hash: md5
+  path: telecom_credit_scoring_data.parquet

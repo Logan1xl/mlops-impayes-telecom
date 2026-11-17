@@ -1,0 +1,6 @@
+{
+  "source": "huggingface",
+  "detail": "electricsheepafrica/africa-synth-telecom-telecom-credit-scoring-data-nigeria/telecom_credit_scoring_data.parquet",
+  "rows": 500000,
+  "retrieved_at": "2026-11-17T23:51:34.978259+00:00"
+}
