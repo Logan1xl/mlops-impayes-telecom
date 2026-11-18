@@ -12,6 +12,8 @@ API FastAPI conteneurisée (Docker), pipelines CI/CD/CT (GitHub Actions + Prefec
 
 Ce README est le **guide d'installation et d'exécution** du projet.
 
+> **Démo de soutenance** — `demo/` contient le « produit vendable » : une page web autonome (100 % hors-ligne, aucune installation) qui embarque le modèle et tout le dossier commercial (démo, argumentaire ROI, performance réelle, traçabilité MLflow exportée). Double-cliquer `demo/index.html` ou `demo/Lancer_Demo_macOS.command` (voir `demo/README.md`). Les artefacts du produit se régénèrent avec `python scripts/export_demo_assets.py` après chaque `dvc repro`.
+
 > **Note sur les données** — Sans accès à Hugging Face, `python -m impayes.data.download --allow-synthetic`
 > génère une réplique de même schéma (200 000 lignes) pour tester toute la chaîne. Avec le vrai jeu,
 > l'étape 5 régénère toutes les métriques et figures.

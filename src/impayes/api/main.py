@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 
 from impayes.api.schemas import BatchRequest, BatchResponse, Feedback, ModelInfo, PredictionRequest, PredictionResponse
@@ -77,6 +78,9 @@ app = FastAPI(
                 "à partir de son comportement d'usage et de paiement.",
     lifespan=lifespan,
 )
+# Démo locale : autorise la page web statique (file://) à appeler l'API.
+# En production, restreindre allow_origins aux origines applicatives autorisées.
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def _log_prediction(record: dict) -> None:

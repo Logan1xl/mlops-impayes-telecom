@@ -1,0 +1,135 @@
+{
+ "experiment": "impayes-default-risk",
+ "runs": [
+  {
+   "run_id": "2805ad8037a34f63a0248c7b6dcd0d7a",
+   "name": "logreg",
+   "status": "FINISHED",
+   "start_time": 1794959548422,
+   "model": "logreg",
+   "git_commit": "03bb77f",
+   "data_version": "517425048d17a19e74ea7d8eb3492de7",
+   "selected": true,
+   "params": {
+    "model": "logreg",
+    "logreg.C": "1.0",
+    "logreg.max_iter": "1000",
+    "class_weight": "balanced",
+    "n_train": "350000",
+    "features": "tenure_months,avg_monthly_spend_ngn,recharge_frequency_per_month,payment_consistency_score,late_payment_count,operator,account_type"
+   },
+   "metrics": {
+    "val_f1_macro": 0.46966169675536196,
+    "val_recall_high": 0.6727468775271812,
+    "val_auc_ovr_macro": 0.6505423620587844,
+    "val_fit_seconds": 0.8912404580041766,
+    "test_accuracy": 0.58161,
+    "test_precision_macro": 0.4612356172584012,
+    "test_recall_macro": 0.5048785161870154,
+    "test_f1_macro": 0.4690313736394062,
+    "test_recall_high": 0.6736005031898643,
+    "test_auc_ovr_macro": 0.6501724091604152,
+    "test_latency_p95_ms": 1.54432739582262
+   },
+   "tags": {
+    "git_commit": "03bb77f",
+    "data_version": "517425048d17a19e74ea7d8eb3492de7",
+    "sklearn": "1.9.1",
+    "python": "3.12.15",
+    "seed": "42",
+    "candidate": "logreg",
+    "selected": "true"
+   }
+  },
+  {
+   "run_id": "5aca4d0d1ccf4c249657e96e133ca244",
+   "name": "random_forest",
+   "status": "FINISHED",
+   "start_time": 1794959549565,
+   "model": "random_forest",
+   "git_commit": "03bb77f",
+   "data_version": "517425048d17a19e74ea7d8eb3492de7",
+   "selected": false,
+   "params": {
+    "model": "random_forest",
+    "random_forest.n_estimators": "200",
+    "random_forest.max_depth": "14",
+    "random_forest.min_samples_leaf": "20",
+    "class_weight": "balanced",
+    "n_train": "350000",
+    "features": "tenure_months,avg_monthly_spend_ngn,recharge_frequency_per_month,payment_consistency_score,late_payment_count,operator,account_type"
+   },
+   "metrics": {
+    "val_f1_macro": 0.45278418339369814,
+    "val_recall_high": 0.6677149788839968,
+    "val_auc_ovr_macro": 0.6502039607543032,
+    "val_fit_seconds": 10.226949584000977
+   },
+   "tags": {
+    "git_commit": "03bb77f",
+    "data_version": "517425048d17a19e74ea7d8eb3492de7",
+    "sklearn": "1.9.1",
+    "python": "3.12.15",
+    "seed": "42",
+    "candidate": "random_forest"
+   }
+  },
+  {
+   "run_id": "4608a8a6c4e74b7c86e9d130cc50c7fa",
+   "name": "hist_gbm",
+   "status": "FINISHED",
+   "start_time": 1794959560234,
+   "model": "hist_gbm",
+   "git_commit": "03bb77f",
+   "data_version": "517425048d17a19e74ea7d8eb3492de7",
+   "selected": false,
+   "params": {
+    "model": "hist_gbm",
+    "hist_gbm.max_iter": "300",
+    "hist_gbm.learning_rate": "0.08",
+    "hist_gbm.max_leaf_nodes": "31",
+    "hist_gbm.l2_regularization": "1.0",
+    "class_weight": "balanced",
+    "n_train": "350000",
+    "features": "tenure_months,avg_monthly_spend_ngn,recharge_frequency_per_month,payment_consistency_score,late_payment_count,operator,account_type"
+   },
+   "metrics": {
+    "val_f1_macro": 0.45745163514433457,
+    "val_recall_high": 0.6671758468865128,
+    "val_auc_ovr_macro": 0.6476770424940342,
+    "val_fit_seconds": 2.0940951250013313
+   },
+   "tags": {
+    "git_commit": "03bb77f",
+    "data_version": "517425048d17a19e74ea7d8eb3492de7",
+    "sklearn": "1.9.1",
+    "python": "3.12.15",
+    "seed": "42",
+    "candidate": "hist_gbm"
+   }
+  }
+ ],
+ "audit": [
+  {
+   "ts": "2026-11-17T23:53:10.850110+00:00",
+   "action": "promote",
+   "model": "impayes-default-risk",
+   "version": "1",
+   "to": "production",
+   "approved_by": "DONGMO WOZE Junior",
+   "reason": ""
+  }
+ ],
+ "registry": [
+  {
+   "model_name": "impayes-default-risk",
+   "version": 1,
+   "model_type": "logreg",
+   "run_id": "2805ad8037a34f63a0248c7b6dcd0d7a",
+   "data_version": "517425048d17a19e74ea7d8eb3492de7",
+   "git_commit": "03bb77f",
+   "trained_at": "2026-11-17T23:52:44Z"
+  }
+ ],
+ "pipeline_lock": true
+}
