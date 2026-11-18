@@ -28,3 +28,6 @@ mlflow.db
 # Divers
 .env
 .DS_Store
+
+# Stockage DVC local (port '../dvc-storage') : ne pas versionner
+/dvc-storage/

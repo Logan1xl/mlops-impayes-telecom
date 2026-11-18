@@ -1,0 +1,173 @@
+schema: '2.0'
+stages:
+  validate:
+    cmd: python -m impayes.data.validate
+    deps:
+    - path: data/raw/telecom_credit_scoring_data.parquet
+      hash: md5
+      md5: 517425048d17a19e74ea7d8eb3492de7
+      size: 16791883
+    - path: src/impayes/data/validate.py
+      hash: md5
+      md5: 26b2ebb6bdfead8c9bf2161442280547
+      size: 4763
+    outs:
+    - path: reports/data_validation.json
+      hash: md5
+      md5: 05a13a8b72648057c2fb5bed580daf25
+      size: 4138
+  preprocess:
+    cmd: python -m impayes.features.build_features
+    deps:
+    - path: data/raw/telecom_credit_scoring_data.parquet
+      hash: md5
+      md5: 517425048d17a19e74ea7d8eb3492de7
+      size: 16791883
+    - path: reports/data_validation.json
+      hash: md5
+      md5: 05a13a8b72648057c2fb5bed580daf25
+      size: 4138
+    - path: src/impayes/features/build_features.py
+      hash: md5
+      md5: f1f5863c29ed16b3fcf74e37f6957213
+      size: 4204
+    params:
+      params.yaml:
+        features:
+          numeric:
+          - tenure_months
+          - avg_monthly_spend_ngn
+          - recharge_frequency_per_month
+          - payment_consistency_score
+          - late_payment_count
+          categorical:
+          - operator
+          - account_type
+          dropped:
+          - customer_id
+          - phone_number
+          - assessment_date
+          - credit_score
+          - credit_rating
+          - loan_eligibility
+          - max_loan_amount_ngn
+          engineered: true
+        project.seed: 42
+        split:
+          test_size: 0.2
+          val_size: 0.1
+    outs:
+    - path: data/processed
+      hash: md5
+      md5: 0914a80a761f4282bb07e4892ee7cbbb.dir
+      size: 5249725
+      nfiles: 3
+    - path: data/reference/reference.parquet
+      hash: md5
+      md5: e5c0d175d544cfdc90fb4cbf7ea91e85
+      size: 570009
+    - path: reports/split_stats.json
+      hash: md5
+      md5: 4b9564a8552529b1ebceaadec7c38922
+      size: 391
+  train:
+    cmd: python -m impayes.models.train
+    deps:
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 0b5fee42f9d15d8a6dd78fc3b0428ce2
+      size: 3542176
+    - path: data/processed/val.parquet
+      hash: md5
+      md5: 30eb1d6c7047a2b9d6eb773cdfe2ed92
+      size: 569955
+    - path: src/impayes/features/build_features.py
+      hash: md5
+      md5: f1f5863c29ed16b3fcf74e37f6957213
+      size: 4204
+    - path: src/impayes/models/train.py
+      hash: md5
+      md5: cb11aca0fc9f14d14ce9cefe1e1f8dd8
+      size: 6932
+    params:
+      params.yaml:
+        project.seed: 42
+        train:
+          candidates:
+          - logreg
+          - random_forest
+          - hist_gbm
+          primary_metric: f1_macro
+          class_weight: balanced
+          logreg:
+            C: 1.0
+            max_iter: 1000
+          random_forest:
+            n_estimators: 200
+            max_depth: 14
+            min_samples_leaf: 20
+          hist_gbm:
+            max_iter: 300
+            learning_rate: 0.08
+            max_leaf_nodes: 31
+            l2_regularization: 1.0
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: 55a6f55ea056e27a498c4dc48f0ffade
+      size: 4714
+    - path: models/model_metadata.json
+      hash: md5
+      md5: 35a89ecb3db33785f66460752dc00cbc
+      size: 750
+    - path: reports/model_comparison.json
+      hash: md5
+      md5: 7f6d3f0e50bebe37b68bc45e46aa069c
+      size: 722
+  evaluate:
+    cmd: python -m impayes.models.evaluate
+    deps:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 70b306feff1774741bb251b49b11e4c0
+      size: 1137594
+    - path: models/model.joblib
+      hash: md5
+      md5: 55a6f55ea056e27a498c4dc48f0ffade
+      size: 4714
+    - path: src/impayes/models/evaluate.py
+      hash: md5
+      md5: c04d96cb39f4754d61588a35d3519566
+      size: 9882
+    params:
+      params.yaml:
+        validation:
+          min_f1_macro: 0.45
+          min_recall_high: 0.6
+          max_regression_vs_production: 0.01
+          max_latency_ms_p95: 150
+    outs:
+    - path: reports/figures/confusion_matrix.png
+      hash: md5
+      md5: f2c1acda39fcf4a2c7327fd458fa65f3
+      size: 53169
+    - path: reports/figures/feature_importance.png
+      hash: md5
+      md5: 51e84355b245874851bc4b60671cd868
+      size: 50294
+    - path: reports/figures/model_comparison.png
+      hash: md5
+      md5: e79dd273c65e8c2a94e4c58a87638f50
+      size: 46016
+    - path: reports/figures/roc_curves.png
+      hash: md5
+      md5: d4cc37037c7fb64ba61350343dc13340
+      size: 85218
+    - path: reports/metrics.json
+      hash: md5
+      md5: 61971b33bec685bba0d764f64cef2015
+      size: 2319
+    - path: reports/metrics_summary.json
+      hash: md5
+      md5: e4f1ea22ed9aa878d80eb3490268a655
+      size: 175
