@@ -8,7 +8,25 @@ from typing import Any
 
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+
+def _repo_root() -> Path:
+    """Racine du projet.
+
+    Installation éditable (dev) : parents[2] de ce fichier = racine du dépôt.
+    Installation dans une image Docker (site-packages, WORKDIR /app) :
+    parents[2] n'existe pas côté données -> on retombe sur le répertoire
+    courant, où le Dockerfile place params.yaml, models/ et data/.
+    """
+    pkg_root = Path(__file__).resolve().parents[2]
+    if (pkg_root / "params.yaml").exists():
+        return pkg_root
+    cwd = Path.cwd()
+    if (cwd / "params.yaml").exists():
+        return cwd
+    return pkg_root  # comportement historique (erreur explicite en aval)
+
+
+ROOT = _repo_root()
 PARAMS_PATH = Path(os.getenv("IMPAYES_PARAMS", ROOT / "params.yaml"))
 
 DATA_DIR = ROOT / "data"
