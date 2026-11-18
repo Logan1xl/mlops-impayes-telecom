@@ -1,0 +1,22 @@
+# ---------------------------------------------------------------
+# Image MLflow dédiée (tracking + registre de modèles)
+#   Build :  docker build -f docker/Dockerfile.mlflow -t impayes-mlflow:local .
+#   Run   :  docker run -p 5000:5000 -v mlflow-data:/mlflow impayes-mlflow:local
+# Remplace l'installation pip à chaque démarrage du service compose.
+# ---------------------------------------------------------------
+FROM python:3.11-slim
+LABEL org.opencontainers.image.title="impayes-mlflow" \
+      org.opencontainers.image.description="MLflow tracking + registry pour Impayes AI" \
+      org.opencontainers.image.authors="MBONGO BOLLO Jarle Wulfrid, DONGMO WOZE Junior"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+RUN pip install --no-cache-dir "mlflow==3.18.0" \
+ && useradd --create-home --uid 10002 mlflow \
+ && mkdir -p /mlflow && chown -R mlflow:mlflow /mlflow
+WORKDIR /mlflow
+USER mlflow
+EXPOSE 5000
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=6 \
+  CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/health').status==200 else 1)"
+CMD ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", \
+      "--backend-store-uri", "sqlite:////mlflow/mlflow.db", \
+      "--artifacts-destination", "/mlflow/artifacts", "--serve-artifacts"]

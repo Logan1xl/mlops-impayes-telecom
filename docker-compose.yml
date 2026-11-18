@@ -6,13 +6,10 @@
 #   Grafana    http://localhost:3000   (admin / admin)
 services:
   mlflow:
-    image: python:3.11-slim
-    # Même version de MLflow que le client (requirements.txt) pour éviter les incompatibilités
-    command: >
-      sh -c "pip install --no-cache-dir -q 'mlflow>=2.16' &&
-             mlflow server --host 0.0.0.0 --port 5000
-             --backend-store-uri sqlite:////mlflow/mlflow.db
-             --artifacts-destination /mlflow/artifacts --serve-artifacts"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.mlflow
+    image: impayes-mlflow:local
     ports: ["5000:5000"]
     volumes:
       - mlflow-data:/mlflow

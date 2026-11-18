@@ -5,7 +5,7 @@
 PY ?= python
 
 .PHONY: help install data data-offline validate features train evaluate pipeline \
-        test lint api mlflow-ui monitor-sim monitor promote docker-build up down clean
+        test lint api mlflow-ui monitor-sim monitor promote docker-build up down clean demo-export
 
 help:            ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}'
@@ -54,6 +54,9 @@ monitor:         ## Analyse des prédictions réellement servies par l'API
 
 promote:         ## Promotion en production : make promote V=1 BY="Nom Prénom"
 	$(PY) -m impayes.models.registry promote --version $(V) --to production --approved-by "$(BY)"
+
+demo-export:     ## Régénère la démo produit (demo/assets/model.js…) après un dvc repro
+	$(PY) scripts/export_demo_assets.py
 
 docker-build:    ## Construit l'image de l'API
 	docker build -f docker/Dockerfile.api -t impayes-api:latest .

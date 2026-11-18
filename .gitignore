@@ -31,3 +31,8 @@ mlflow.db
 
 # Stockage DVC local (port '../dvc-storage') : ne pas versionner
 /dvc-storage/
+
+# Builds PyInstaller (artefact de présentation : voir le ZIP livré)
+demo/dist/
+build/
+*.spec

@@ -16,7 +16,6 @@ import sqlite3
 from pathlib import Path
 
 import joblib
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "demo" / "assets"
@@ -34,9 +33,18 @@ def export_model() -> dict:
     ohe = ct.named_transformers_["cat"]
     clf = model.named_steps["clf"]
     if clf.__class__.__name__ != "LogisticRegression":
-        raise SystemExit("La démo JS ne sait répliquer que la Régression logistique "
-                        f"(modèle courant : {clf.__class__.__name__}). "
-                        "Ré-entraîner ou exporter avec skl2onnx à la place.")
+        # La démo autonome n'embarque que les coefficients LogReg.
+        # On écrit un modèle.js « unsupported » : l'app bascule alors en mode
+        # connecté (API) — la régénération du reste reste possible sans casser.
+        data = {
+            "format": "impayes-js/1",
+            "unsupported": True,
+            "model_class": clf.__class__.__name__,
+            "model_name": meta.get("model_name", "impayes-default-risk"),
+            "model_version": meta.get("version"),
+            "model_type": meta.get("model_type"),
+        }
+        return data
     data = {
         "format": "impayes-js/1",
         "model_name": meta.get("model_name", "impayes-default-risk"),

@@ -112,6 +112,16 @@ async function predictRemote(f) {
   return { ...data, mode: 'connecté', wall_ms: +(performance.now() - t0).toFixed(1) };
 }
 
+function renderError(html) {
+  const chip = $('#riskChip');
+  chip.textContent = 'Indisponible'; chip.className = 'risk-chip risk-medium';
+  $('#donutPct').textContent = '—';
+  $('#donutClass').textContent = 'API requise';
+  $('#recoText').innerHTML = html;
+  $('#factors').innerHTML = '<p class="empty">Mode hors-ligne impossible pour ce modèle.</p>';
+  $('#latencyOut').textContent = 'API FastAPI introuvable sur http://localhost:8000';
+}
+
 /* ---------- Rendu du résultat ---------- */
 const ARC = { low: $('.arc-low'), medium: $('.arc-medium'), high: $('.arc-high') };
 
@@ -253,12 +263,32 @@ let apiOnline = false;
 const modeToggle = $('#modeToggle');
 function setModeLabel() {
   const remote = modeToggle.checked;
-  $('#modeLabel').textContent = remote ? 'Mode connecté (API FastAPI)' : 'Mode autonome (navigateur)';
+  $('#modeLabel').textContent = MODEL.unsupported
+    ? 'Mode connecté — requis par le modèle (' + (MODEL.model_class || 'non-LogReg') + ')'
+    : (remote ? 'Mode connecté (API FastAPI)' : 'Mode autonome (navigateur)');
 }
 modeToggle.addEventListener('change', setModeLabel);
 
 (async function detectApi() {
   const badge = $('#connBadge');
+  // Modèle non-LogReg ré-entraîné : le mode connecté est obligatoire
+  if (MODEL.unsupported) {
+    modeToggle.checked = true; modeToggle.disabled = true;
+    setModeLabel();
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 1500);
+      const res = await fetch('http://localhost:8000/health', { signal: ctrl.signal, cache: 'no-store' });
+      clearTimeout(timer);
+      if (res.ok) { apiOnline = true; badge.innerHTML = '<span class="dot"></span>API requise — connectée'; }
+      else throw new Error();
+    } catch {
+      apiOnline = false;
+      badge.innerHTML = '<span class="dot"></span>API requise — hors ligne';
+      badge.classList.add('offline');
+    }
+    return;
+  }
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 1500);
@@ -290,7 +320,14 @@ async function runPrediction({ record = true } = {}) {
   btn.disabled = true; btn.textContent = 'Évaluation…';
   try {
     let r;
-    if (modeToggle.checked && apiOnline) {
+    if (MODEL.unsupported) {
+      // Modèle non-LogReg ré-entraîné : inférence exclusivement via l'API
+      try { r = await predictRemote(f); }
+      catch {
+        renderError('Le modèle actuellement publié (<code>' + (MODEL.model_class || 'non-LogReg') + '</code>) ne peut pas tourner dans le navigateur.<br>Démarrez l’API puis réessayez :<br><code class="mono">uvicorn impayes.api.main:app --port 8000</code>');
+        return;
+      }
+    } else if (modeToggle.checked && apiOnline) {
       try { r = await predictRemote(f); }
       catch (err) {
         console.warn('API indisponible, repli autonome :', err);
