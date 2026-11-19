@@ -49,3 +49,43 @@ demo/
 ├── dist/NaijaTel-ImpayesAI-Demo(.app)   # exécutable autonome (PyInstaller, 7,6 Mo)
 └── README.md                # ce fichier
 ```
+
+## Déploiement public (pour « le prof l'ouvre depuis n'importe où »)
+
+### Option 1 — GitHub Pages (retenu, gratuit, illimité)
+
+La branche `gh-pages` du dépôt contient déjà la démo prête à servir (`index.html` à la racine).
+
+1. Aller sur `https://github.com/Logan1xl/mlops-impayes-telecom/settings/pages`
+2. **Build and deployment** → Source : **Deploy from a branch**
+3. Branch : **gh-pages** `/(root)` → **Save**
+4. L'URL sera : `https://logan1xl.github.io/mlops-impayes-telecom/`
+
+C'est tout — la démo fonctionne **hors-ligne**, l'API n'est pas nécessaire (calcul JS local).
+Rien n'expire. À chaque ré-export de `demo/assets/`, pousser les changements sur `gh-pages`.
+
+### Option 2 — AWS Free Tier (si AWS imposé, gratuit 12 mois)
+
+S3 + CloudFront (hébergement statique, HTTPS) :
+
+```bash
+aws s3 mb s3://impayes-demo-$ACCOUNT_ID
+aws s3 website s3://impayes-demo-$ACCOUNT_ID/ --index-document index.html
+aws s3 sync demo/ s3://impayes-demo-$ACCOUNT_ID/ --exclude "dist/*"
+# console → CloudFront → distribution pointée sur le bucket S3 (OAI) → HTTPS forcé
+```
+
+Limites : compte AWS requis (CB à vérifier), Free Tier 12 mois (750 h EC2 t2.micro, 5 GB S3, 1 TB/mois CloudFront), puis ~0,50 $/mois.
+
+### Option 3 — API FastAPI live (Render / Fly.io / Oracle Cloud Always Free)
+
+La démo connectée se rebranche automatiquement sur l'API si elle est déployée :
+
+```bash
+fly launch   # Fly.io (free allowances)
+# ou Render : Web Service Python, build « pip install -r requirements.txt && pip install -e ." ,
+#              start « uvicorn impayes.api.main:app --host 0.0.0.0 --port 8000 »
+# Oracle Always Free : VM ARM 4 vCPU / 24 Go — aucun coût dans la limite always-free
+```
+
+Note : l'URL publique de l'API entre dans l'app via `http://localhost:8000` par défaut ; adapter le paramètre `fetch('http://localhost:8000/...')` de `assets/app.js` en variable d'environnement si un jour l'API est exposée.
