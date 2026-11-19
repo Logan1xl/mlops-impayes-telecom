@@ -9,6 +9,7 @@ timedatectl set-timezone Africa/Douala
 mkdir -p /opt/impayes && cd /opt/impayes
 git clone --branch feature/demo-soutenance --depth 1 https://github.com/Logan1xl/mlops-impayes-telecom.git project
 cd project
+chown -R ec2-user:ec2-user /opt/impayes
 
 python3.11 -m venv .venv
 .venv/bin/pip install --no-cache-dir --upgrade pip
