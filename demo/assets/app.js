@@ -451,5 +451,7 @@ $('#customer_ref').value = 'CLI-' + uid().slice(0, 8).toUpperCase();
 syncOutputs();
 computeROI();
 renderRegistry(loadRegistry());
+var mlf = document.getElementById('mlfLink');
+if (mlf) { var h = location.hostname; mlf.href = (h === '' || h === 'localhost') ? 'http://localhost:5000' : 'http://' + h + ':5000'; mlf.textContent = 'Ouvrir MLflow UI → ' + mlf.href; }
 // Évalue le profil affiché au chargement (démo immédiate en présentation) — sans journaliser
 runPrediction({ record: false });
