@@ -347,7 +347,7 @@ async function runPrediction({ record = true } = {}) {
     renderResult(r);
     if (record) addToRegistry(r);
   } finally {
-    btn.disabled = false; btn.innerHTML = '⚡ Évaluer le risque';
+    btn.disabled = false; btn.textContent = 'Évaluer le risque';
   }
 }
 
