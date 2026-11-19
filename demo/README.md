@@ -9,9 +9,12 @@ Démo **100 % hors-ligne** pour la soutenance du CC1 : une page web autonome, sa
 | Aucune machine avec logiciel | Copier le dossier `demo/` sur une clé USB, double-cliquer `index.html` (ou `Lancer_Demo_macOS.command` / `.bat` / `.sh`) | La démo s'ouvre dans le navigateur par défaut |
 | Machine avec **seulement le binaire** (sans Python) | Double-cliquer `dist/NaijaTel-ImpayesAI-Demo.app` (7,6 Mo, macOS arm64) — construit avec PyInstaller | Le navigateur s'ouvre tout seul sur la démo servie en local |
 | Machine du présentateur avec le projet | `./Lancer_Demo_macOS.command` puis, dans un second terminal : `mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000` et/ou `uvicorn impayes.api.main:app --port 8000` | Onglet « Traçabilité » + MLflow live côte à côte ; la démo bascule auto en « Mode connecté » |
+| Machine sans rien du tout — Windows | Double-cliquer `dist/NaijaTel-ImpayesAI-Demo.exe` | Le navigateur ouvre la démo (6,1 Mo, aucun runtime requis) |
+| Machine sans rien du tout — Linux | Lancer `./dist/NaijaTel-ImpayesAI-Demo-linux` | Idem (5,9 Mo) |
+| Machine sans rien du tout — macOS | Lancer `./dist/NaijaTel-ImpayesAI-Demo-macos-arm64` (Apple Silicon) ou `-amd64` (Intel) ; ou le `.app` PyInstaller (double-clic Finder) | Idem (5,6 / 6,0 / 7,6 Mo) |
 | Démo très courte (5 min) | Onglet « Démo produit » uniquement : 1 profil fidèle → verdict vert ; 1 profil « Client à gros risque » → verdict rouge ; montrer l'export CSV du registre | Le jury voit l'IA + la traçabilité d'une décision |
 
-> **Exécutable autonome** (`dist/NaijaTel-ImpayesAI-Demo`) — embarque la démo entière ; la machine cible n'a besoin de **rien** (ni Python, ni Docker, ni réseau). macOS Gatekeeper : clic droit → Ouvrir la première fois. Binaire **ARM64 macOS** : sur Windows, compiler sur Windows (`pip install pyinstaller` puis la commande du `pyi` dans `scripts/standalone_launcher.py`) — ou livrer `Lancer_Demo_Windows.bat` + le dossier `demo/` (moins consensuel, mais zéro build).
+> **Exécutables autonomes** (`demo/dist/`) — embarquent la démo entière ; la machine cible n'a besoin de **rien** (ni Python, ni Docker, ni réseau). Reconstruis-les avec `installer/build.sh` (nécessite Go 1.21+) après chaque modification de `demo/`. macOS Gatekeeper : clic droit → Ouvrir la première fois. Binaire **ARM64 macOS** : sur Windows, compiler sur Windows (`pip install pyinstaller` puis la commande du `pyi` dans `scripts/standalone_launcher.py`) — ou livrer `Lancer_Demo_Windows.bat` + le dossier `demo/` (moins consensuel, mais zéro build).
 
 ## Plan de présentation suggéré (≈ 12 min)
 
