@@ -452,6 +452,6 @@ syncOutputs();
 computeROI();
 renderRegistry(loadRegistry());
 var mlf = document.getElementById('mlfLink');
-if (mlf) { var h = location.hostname; mlf.href = (h === '' || h === 'localhost') ? 'http://localhost:5000' : 'http://' + h + ':5000'; mlf.textContent = 'Ouvrir MLflow UI → ' + mlf.href; }
+if (mlf) { var h = location.hostname; var url = (h === '' || h === 'localhost') ? 'http://localhost:5000' : location.origin + '/mlflow/'; mlf.href = url; mlf.textContent = 'Ouvrir MLflow UI →'; }
 // Évalue le profil affiché au chargement (démo immédiate en présentation) — sans journaliser
 runPrediction({ record: false });
