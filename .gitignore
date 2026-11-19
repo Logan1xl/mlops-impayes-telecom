@@ -36,3 +36,6 @@ mlflow.db
 demo/dist/
 build/
 *.spec
+
+# Assets copiés par installer/build.sh (régénérés)
+installer/launcher/assets/
