@@ -104,7 +104,7 @@ async function predictRemote(f) {
     late_payment_count: f.late_payment_count,
     operator: f.operator, account_type: f.account_type, customer_ref: f.customer_ref,
   };
-  const res = await fetch('http://localhost:8000/predict', {
+  const res = await fetch(API_BASE + '/predict', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error('API HTTP ' + res.status);
@@ -119,10 +119,17 @@ function renderError(html) {
   $('#donutClass').textContent = 'API requise';
   $('#recoText').innerHTML = html;
   $('#factors').innerHTML = '<p class="empty">Mode hors-ligne impossible pour ce modèle.</p>';
-  $('#latencyOut').textContent = 'API FastAPI introuvable sur http://localhost:8000';
+  $('#latencyOut').textContent = 'API FastAPI introuvable — démarrez le modèle';
 }
 
 /* ---------- Rendu du résultat ---------- */
+/* API base : file:// → local · localhost: → même machine :8000 · sinon même origine + /api (Nginx proxie vers uvicorn) */
+const API_BASE = location.protocol === 'file:'
+  ? 'http://127.0.0.1:8000'
+  : (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)
+      ? 'http://' + location.hostname + ':8000'
+      : location.origin + '/api');
+
 const ARC = { low: $('.arc-low'), medium: $('.arc-medium'), high: $('.arc-high') };
 
 function renderResult(r) {
@@ -171,7 +178,7 @@ function renderResult(r) {
     ? `API FastAPI · ${r.latency_ms} ms (réseau ${r.wall_ms} ms)`
     : `inférence locale · ${r.latency_ms < 1 ? '< 1' : r.latency_ms} ms`;
 
-  const curl = `$ curl -X POST http://localhost:8000/predict -H "Content-Type: application/json" \\
+  const curl = `$ curl -X POST ' + API_BASE + '/predict -H "Content-Type: application/json" \\
      -d '{"tenure_months": ${formValues.tenure}, "avg_monthly_spend_ngn": ${formValues.spend}, …}'
 
 → 200 OK
@@ -278,7 +285,7 @@ modeToggle.addEventListener('change', setModeLabel);
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 1500);
-      const res = await fetch('http://localhost:8000/health', { signal: ctrl.signal, cache: 'no-store' });
+      const res = await fetch(API_BASE + '/health', { signal: ctrl.signal, cache: 'no-store' });
       clearTimeout(timer);
       if (res.ok) { apiOnline = true; badge.innerHTML = '<span class="dot"></span>API requise — connectée'; }
       else throw new Error();
@@ -292,13 +299,13 @@ modeToggle.addEventListener('change', setModeLabel);
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 1500);
-    const res = await fetch('http://localhost:8000/health', { signal: ctrl.signal, cache: 'no-store' });
+    const res = await fetch(API_BASE + '/health', { signal: ctrl.signal, cache: 'no-store' });
     clearTimeout(timer);
     if (res.ok) {
       apiOnline = true;
       badge.innerHTML = '<span class="dot"></span>API connectée';
       badge.classList.remove('offline');
-      badge.title = 'API FastAPI joignable sur http://localhost:8000';
+      badge.title = 'API joignable : ' + API_BASE;
       modeToggle.checked = true;
       setModeLabel();
       return;
