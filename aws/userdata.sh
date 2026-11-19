@@ -1,7 +1,6 @@
 #!/bin/bash
 # Impayes AI — bootstrap EC2 (Amazon Linux 2023, t3.micro)
-# Version légère : nginx sert la démo statique + proxy /api → FastAPI.
-# PAS de mlflow, PAS d'environnement de dev — seulement sklearn + pandas pour l'API.
+# MLflow UI :5000 — FastAPI :8000 — nginx :80 (démo statique + proxy /api)
 set -euxo pipefail
 dnf update -y
 dnf install -y python3.11 python3.11-pip git nginx
@@ -13,7 +12,7 @@ cd project
 
 python3.11 -m venv .venv
 .venv/bin/pip install --no-cache-dir --upgrade pip
-.venv/bin/pip install --no-cache-dir numpy pandas scipy scikit-learn joblib fastapi uvicorn pydantic pyyaml prometheus-client
+.venv/bin/pip install --no-cache-dir numpy pandas scipy scikit-learn joblib fastapi uvicorn pydantic pyyaml prometheus-client mlflow
 
 mkdir -p /var/www/demo
 cp -R demo/* /var/www/demo/
@@ -49,6 +48,22 @@ RestartSec=5
 WantedBy=multi-user.target
 SVC
 
+cat > /etc/systemd/system/impayes-mlflow.service <<'SVC'
+[Unit]
+Description=Impayes AI — MLflow UI sur :5000
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/opt/impayes/project
+ExecStart=/opt/impayes/project/.venv/bin/mlflow ui --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0 --port 5000 --workers 1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+SVC
+
 systemctl daemon-reload
-systemctl enable --now nginx impayes-api
+systemctl enable --now nginx impayes-api impayes-mlflow
 echo "OK $(date -u)" > /var/log/impayes-bootstrap.log
